@@ -59,6 +59,24 @@ def play_game(bot1, bot2, q_table_path="q_table.json"):
 
 if __name__ == "__main__":
     import sys
+    import threading
+
+    def play_games_threaded(num_games, num_threads):
+        threads = []
+        for _ in range(num_threads):
+            thread = threading.Thread(target=play_games, args=(num_games // num_threads,))
+            threads.append(thread)
+            thread.start()
+
+        for thread in threads:
+            thread.join()
+
+    def play_games(num_games):
+        bot = QLearningBot()
+        for i in range(num_games):
+            print(f"Playing game {i+1}")
+            result = play_game(bot, bot, "q_table.json")
+            print(f"Game {i+1} result: {result}")
 
     if len(sys.argv) > 1 and sys.argv[1] == "compete":
         # In compete mode, the bot plays against another instance of itself.
@@ -71,13 +89,18 @@ if __name__ == "__main__":
         result = play_game(bot1, bot2, "q_table.json")
         print(f"Game result: {result}")
     else:
-        # In normal mode, the bot plays against itself to learn.
-        bot = QLearningBot()
+        num_games = 100
+        num_threads = 4
+        if len(sys.argv) > 1:
+            try:
+                num_games = int(sys.argv[1])
+            except ValueError:
+                pass
+        if len(sys.argv) > 2:
+            try:
+                num_threads = int(sys.argv[2])
+            except ValueError:
+                pass
 
-        # Play 100 games to learn
-        for i in range(100):
-            print(f"Playing game {i+1}")
-            result = play_game(bot, bot, "q_table.json")
-            print(f"Game {i+1} result: {result}")
-
+        play_games_threaded(num_games, num_threads)
         print("Q-table saved.")
