@@ -136,10 +136,12 @@ class FlappyBirdGame:
 
 
 if __name__ == '__main__':
+    print("Starting training...")
     game = FlappyBirdGame()
     bot = FlappyBirdBot()
     bot.load_q_table("q_table.json")
 
+    scores = []
     for i in range(1000):
         game.reset()
         state = (game.bird_y, game.bird_velocity, 0, 0)
@@ -148,6 +150,9 @@ if __name__ == '__main__':
             next_state, reward, done = game.step(action)
             bot.update_q_value(state, action, reward, next_state)
             state = next_state
+        scores.append(game.score)
 
     bot.save_q_table("q_table.json")
     print("Training complete.")
+    print(f"Scores: {scores}")
+    print(f"Average score: {sum(scores) / len(scores)}")
