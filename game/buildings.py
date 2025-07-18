@@ -44,4 +44,9 @@ buildings = {
         cost={"wood": 50},
         production={},
     ),
+    "farm": Building(
+        name="Farm",
+        cost={"wood": 100},
+        production={"food": 1},
+    ),
 }

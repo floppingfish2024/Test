@@ -1,12 +1,15 @@
 class Research:
-    def __init__(self, name, cost, unlocks):
+    def __init__(self, name, cost, unlocks, population_requirement=0):
         self.name = name
         self.cost = cost
         self.unlocks = unlocks
+        self.population_requirement = population_requirement
         self.is_researched = False
 
     def can_research(self, game_state):
         if self.is_researched:
+            return False
+        if game_state.resources["population"] < self.population_requirement:
             return False
         for resource, amount in self.cost.items():
             if game_state.resources.get(resource, 0) < amount:
@@ -30,10 +33,17 @@ research_tree = {
         name="Unlock Quarry",
         cost={"wood": 100, "stone": 100},
         unlocks={"building": "quarry"},
+        population_requirement=10,
     ),
     "unlock_housing": Research(
         name="Unlock Housing",
         cost={"wood": 200},
         unlocks={"building": "house"},
+    ),
+    "unlock_farming": Research(
+        name="Unlock Farming",
+        cost={"wood": 150, "food": 50},
+        unlocks={"building": "farm"},
+        population_requirement=5,
     ),
 }

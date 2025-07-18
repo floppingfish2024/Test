@@ -51,12 +51,23 @@ class MainWindow:
             [sg.Text(message)] for message in self.game_state.event_log[-5:] # Display last 5 events
         ]
 
+        worker_allocation_layout = [
+            [
+                sg.Text(f"{resource.capitalize()}:"),
+                sg.Button("-", key=f"worker_dec_{resource}"),
+                sg.Text(f"{self.game_state.workers[resource]}", key=f"worker_count_{resource}"),
+                sg.Button("+", key=f"worker_inc_{resource}"),
+            ]
+            for resource in self.game_state.workers
+        ]
+
         layout = [
             [sg.Frame("Resources", resource_layout)],
             [sg.Frame("Actions", action_layout)],
             [sg.Frame("Buildings", building_layout)],
             [sg.Frame("Research", research_layout)],
             [sg.Frame("Upgrades", upgrade_layout)],
+            [sg.Frame("Worker Allocation", worker_allocation_layout)],
             [sg.Frame("Event Log", event_log_layout, key="event_log")],
         ]
         return layout
@@ -113,6 +124,18 @@ class MainWindow:
                 upgrade_name = event.split("_")[1]
                 upgrade = self.game_state.upgrades[upgrade_name]
                 if upgrade.purchase(self.game_state):
+                    self.remake_layout()
+
+            if event.startswith("worker_inc_"):
+                resource = event.split("_")[2]
+                if sum(self.game_state.workers.values()) < self.game_state.resources["population"]:
+                    self.game_state.workers[resource] += 1
+                    self.remake_layout()
+
+            if event.startswith("worker_dec_"):
+                resource = event.split("_")[2]
+                if self.game_state.workers[resource] > 0:
+                    self.game_state.workers[resource] -= 1
                     self.remake_layout()
 
             self.game_state.update()
