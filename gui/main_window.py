@@ -10,13 +10,13 @@ class MainWindow:
 
     def create_layout(self):
         resource_layout = [
-            [sg.T(f"{resource.capitalize()}: {amount}", key=f"resource_{resource}")]
+            [sg.Text(f"{resource.capitalize()}: {amount}", key=f"resource_{resource}")]
             for resource, amount in self.game_state.resources.items()
         ]
-        resource_layout.append([sg.T(f"Population: {int(self.game_state.resources['population'])}/{self.game_state.population_limit}", key="population")])
+        resource_layout.append([sg.Text(f"Population: {int(self.game_state.resources['population'])}/{self.game_state.population_limit}", key="population")])
 
         action_layout = [
-            [sg.B(actions[action_name].name, key=f"action_{action_name}")]
+            [sg.Button(actions[action_name].name, key=f"action_{action_name}")]
             for action_name in self.game_state.unlocked_actions
         ]
 
