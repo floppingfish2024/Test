@@ -1,144 +1,140 @@
-import PySimpleGUI as sg
+import tkinter as tk
+from tkinter import ttk
 
-from game.actions import actions
+from game.actions import actions, unlock_action
+from game.buildings import buildings
+from game.research import research_tree
+from game.upgrades import upgrades
 
 class MainWindow:
     def __init__(self, game_state):
         self.game_state = game_state
-        self.layout = self.create_layout()
-        self.window = sg.Window("Incremental Game", self.layout)
+        self.root = tk.Tk()
+        self.root.title("Incremental Game")
+
+        self.resource_labels = {}
+        self.worker_labels = {}
+        self.create_layout()
 
     def create_layout(self):
-        resource_layout = [
-            [sg.Text(f"{resource.capitalize()}: {amount}", key=f"resource_{resource}")]
-            for resource, amount in self.game_state.resources.items()
-        ]
-        resource_layout.append([sg.Text(f"Population: {int(self.game_state.resources['population'])}/{self.game_state.population_limit}", key="population")])
+        for widget in self.root.winfo_children():
+            widget.destroy()
 
-        action_layout = [
-            [sg.Button(actions[action_name].name, key=f"action_{action_name}")]
-            for action_name in self.game_state.unlocked_actions
-        ]
+        self.root.grid_columnconfigure(0, weight=1)
 
-        building_layout = [
-            [
-                sg.Text(f"{building.name} (Level {building.level})", key=f"building_{name}_level"),
-                sg.Button(f"Build ({', '.join([f'{v} {k}' for k, v in building.get_cost().items()])})", key=f"build_{name}"),
-            ]
-            for name, building in self.game_state.buildings.items()
-            if name in self.game_state.unlocked_buildings
-        ]
+        # Resources
+        resource_frame = ttk.LabelFrame(self.root, text="Resources")
+        resource_frame.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        for i, (resource, amount) in enumerate(self.game_state.resources.items()):
+            label = ttk.Label(resource_frame, text=f"{resource.capitalize()}: {int(amount)}")
+            label.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+            self.resource_labels[resource] = label
 
-        research_layout = [
-            [
-                sg.Text(f"{research.name}"),
-                sg.Button(f"Research ({', '.join([f'{v} {k}' for k, v in research.cost.items()])})", key=f"research_{name}"),
-            ]
-            for name, research in self.game_state.research_tree.items()
-            if not research.is_researched
-        ]
+        # Actions
+        action_frame = ttk.LabelFrame(self.root, text="Actions")
+        action_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        for i, action_name in enumerate(sorted(list(self.game_state.unlocked_actions))):
+            action = actions[action_name]
+            button = ttk.Button(action_frame, text=action.name, command=lambda a=action, an=action_name: self.execute_action(a, an))
+            button.grid(row=i, column=0, padx=5, pady=5, sticky="w")
 
-        upgrade_layout = [
-            [
-                sg.Text(f"{upgrade.name}"),
-                sg.Button(f"Purchase ({', '.join([f'{v} {k}' for k, v in upgrade.cost.items()])})", key=f"upgrade_{name}"),
-            ]
-            for name, upgrade in self.game_state.upgrades.items()
-            if not upgrade.is_purchased
-        ]
+        # Buildings
+        building_frame = ttk.LabelFrame(self.root, text="Buildings")
+        building_frame.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
+        for i, (name, building) in enumerate(self.game_state.buildings.items()):
+             if name in self.game_state.unlocked_buildings:
+                label = ttk.Label(building_frame, text=f"{building.name} (Level {building.level})")
+                label.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+                button = ttk.Button(building_frame, text=f"Build ({', '.join([f'{v} {k}' for k, v in building.get_cost().items()])})", command=lambda b=building: self.build(b))
+                button.grid(row=i, column=1, padx=5, pady=5, sticky="w")
 
-        event_log_layout = [
-            [sg.Text(message)] for message in self.game_state.event_log[-5:] # Display last 5 events
-        ]
+        # Research
+        research_frame = ttk.LabelFrame(self.root, text="Research")
+        research_frame.grid(row=3, column=0, padx=10, pady=10, sticky="ew")
+        for i, (name, research) in enumerate(self.game_state.research_tree.items()):
+            if not research.is_researched:
+                label = ttk.Label(research_frame, text=research.name)
+                label.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+                button = ttk.Button(research_frame, text=f"Research ({', '.join([f'{v} {k}' for k, v in research.cost.items()])})", command=lambda r=research: self.research(r))
+                button.grid(row=i, column=1, padx=5, pady=5, sticky="w")
 
-        worker_allocation_layout = [
-            [
-                sg.Text(f"{resource.capitalize()}:"),
-                sg.Button("-", key=f"worker_dec_{resource}"),
-                sg.Text(f"{self.game_state.workers[resource]}", key=f"worker_count_{resource}"),
-                sg.Button("+", key=f"worker_inc_{resource}"),
-            ]
-            for resource in self.game_state.workers
-        ]
+        # Upgrades
+        upgrade_frame = ttk.LabelFrame(self.root, text="Upgrades")
+        upgrade_frame.grid(row=4, column=0, padx=10, pady=10, sticky="ew")
+        for i, (name, upgrade) in enumerate(self.game_state.upgrades.items()):
+            if not upgrade.is_purchased:
+                label = ttk.Label(upgrade_frame, text=upgrade.name)
+                label.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+                button = ttk.Button(upgrade_frame, text=f"Purchase ({', '.join([f'{v} {k}' for k, v in upgrade.cost.items()])})", command=lambda u=upgrade: self.purchase_upgrade(u))
+                button.grid(row=i, column=1, padx=5, pady=5, sticky="w")
 
-        layout = [
-            [sg.Frame("Resources", resource_layout)],
-            [sg.Frame("Actions", action_layout)],
-            [sg.Frame("Buildings", building_layout)],
-            [sg.Frame("Research", research_layout)],
-            [sg.Frame("Upgrades", upgrade_layout)],
-            [sg.Frame("Worker Allocation", worker_allocation_layout)],
-            [sg.Frame("Event Log", event_log_layout, key="event_log")],
-        ]
-        return layout
+        # Worker Allocation
+        worker_frame = ttk.LabelFrame(self.root, text="Worker Allocation")
+        worker_frame.grid(row=5, column=0, padx=10, pady=10, sticky="ew")
+        for i, resource in enumerate(self.game_state.workers):
+            label = ttk.Label(worker_frame, text=f"{resource.capitalize()}:")
+            label.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+            dec_button = ttk.Button(worker_frame, text="-", command=lambda r=resource: self.dec_worker(r))
+            dec_button.grid(row=i, column=1, padx=5, pady=5, sticky="w")
+            worker_label = ttk.Label(worker_frame, text=str(self.game_state.workers[resource]))
+            worker_label.grid(row=i, column=2, padx=5, pady=5, sticky="w")
+            self.worker_labels[resource] = worker_label
+            inc_button = ttk.Button(worker_frame, text="+", command=lambda r=resource: self.inc_worker(r))
+            inc_button.grid(row=i, column=3, padx=5, pady=5, sticky="w")
+
+        # Event Log
+        event_frame = ttk.LabelFrame(self.root, text="Event Log")
+        event_frame.grid(row=6, column=0, padx=10, pady=10, sticky="ew")
+        for i, message in enumerate(self.game_state.event_log[-5:]):
+            label = ttk.Label(event_frame, text=message)
+            label.grid(row=i, column=0, padx=5, pady=5, sticky="w")
+
+        self.root.after(100, self.update)
+
+    def execute_action(self, action, action_name):
+        if action.execute(self.game_state):
+            if "unlock" in action_name:
+                self.game_state.unlocked_actions.remove(action_name)
+                unlock_action(self.game_state, action_name)
+                if action_name == "unlock_stone_gathering":
+                    self.game_state.unlocked_actions.add("unlock_iron_mining")
+                elif action_name == "unlock_iron_mining":
+                    self.game_state.unlocked_actions.add("unlock_gold_panning")
+                self.create_layout()
+
+    def build(self, building):
+        if building.build(self.game_state):
+            self.create_layout()
+
+    def research(self, research):
+        if research.research(self.game_state):
+            self.create_layout()
+
+    def purchase_upgrade(self, upgrade):
+        if upgrade.purchase(self.game_state):
+            self.create_layout()
+
+    def inc_worker(self, resource):
+        if sum(self.game_state.workers.values()) < self.game_state.resources["population"]:
+            self.game_state.workers[resource] += 1
+            self.worker_labels[resource].config(text=str(self.game_state.workers[resource]))
+
+
+    def dec_worker(self, resource):
+        if self.game_state.workers[resource] > 0:
+            self.game_state.workers[resource] -= 1
+            self.worker_labels[resource].config(text=str(self.game_state.workers[resource]))
+
 
     def update(self):
         for resource, amount in self.game_state.resources.items():
-            self.window[f"resource_{resource}"].update(
-                f"{resource.capitalize()}: {int(amount)}"
-            )
-        self.window["population"].update(f"Population: {int(self.game_state.resources['population'])}/{self.game_state.population_limit}")
+            self.resource_labels[resource].config(text=f"{resource.capitalize()}: {int(amount)}")
+        self.game_state.update()
         if self.game_state.event_log:
-            self.remake_layout()
-
-    def remake_layout(self):
-        self.layout = self.create_layout()
-        new_window = sg.Window("Incremental Game", self.layout)
-        self.window.close()
-        self.window = new_window
+            self.create_layout()
+        self.root.after(100, self.update)
 
     def run(self):
         self.game_state.unlocked_actions.add("unlock_stone_gathering")
-        self.remake_layout()
-        while True:
-            event, values = self.window.read(timeout=100)
-            if event == sg.WIN_CLOSED:
-                break
-
-            if event.startswith("action_"):
-                action_name = event.split("_")[1]
-                action = actions[action_name]
-                if action.execute(self.game_state):
-                    if "unlock" in action_name:
-                        self.game_state.unlocked_actions.remove(action_name)
-                        unlock_action(self.game_state, action_name)
-                        if action_name == "unlock_stone_gathering":
-                            self.game_state.unlocked_actions.add("unlock_iron_mining")
-                        elif action_name == "unlock_iron_mining":
-                            self.game_state.unlocked_actions.add("unlock_gold_panning")
-                        self.remake_layout()
-
-            if event.startswith("build_"):
-                building_name = event.split("_")[1]
-                building = self.game_state.buildings[building_name]
-                if building.build(self.game_state):
-                    self.remake_layout()
-
-            if event.startswith("research_"):
-                research_name = event.split("_")[1]
-                research = self.game_state.research_tree[research_name]
-                if research.research(self.game_state):
-                    self.remake_layout()
-
-            if event.startswith("upgrade_"):
-                upgrade_name = event.split("_")[1]
-                upgrade = self.game_state.upgrades[upgrade_name]
-                if upgrade.purchase(self.game_state):
-                    self.remake_layout()
-
-            if event.startswith("worker_inc_"):
-                resource = event.split("_")[2]
-                if sum(self.game_state.workers.values()) < self.game_state.resources["population"]:
-                    self.game_state.workers[resource] += 1
-                    self.remake_layout()
-
-            if event.startswith("worker_dec_"):
-                resource = event.split("_")[2]
-                if self.game_state.workers[resource] > 0:
-                    self.game_state.workers[resource] -= 1
-                    self.remake_layout()
-
-            self.game_state.update()
-            self.update()
-
-        self.window.close()
+        self.create_layout()
+        self.root.mainloop()
