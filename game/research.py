@@ -31,4 +31,9 @@ research_tree = {
         cost={"wood": 100, "stone": 100},
         unlocks={"building": "quarry"},
     ),
+    "unlock_housing": Research(
+        name="Unlock Housing",
+        cost={"wood": 200},
+        unlocks={"building": "house"},
+    ),
 }

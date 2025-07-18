@@ -13,6 +13,7 @@ class MainWindow:
             [sg.T(f"{resource.capitalize()}: {amount}", key=f"resource_{resource}")]
             for resource, amount in self.game_state.resources.items()
         ]
+        resource_layout.append([sg.T(f"Population: {int(self.game_state.resources['population'])}/{self.game_state.population_limit}", key="population")])
 
         action_layout = [
             [sg.B(actions[action_name].name, key=f"action_{action_name}")]
@@ -46,12 +47,17 @@ class MainWindow:
             if not upgrade.is_purchased
         ]
 
+        event_log_layout = [
+            [sg.Text(message)] for message in self.game_state.event_log[-5:] # Display last 5 events
+        ]
+
         layout = [
             [sg.Frame("Resources", resource_layout)],
             [sg.Frame("Actions", action_layout)],
             [sg.Frame("Buildings", building_layout)],
             [sg.Frame("Research", research_layout)],
             [sg.Frame("Upgrades", upgrade_layout)],
+            [sg.Frame("Event Log", event_log_layout, key="event_log")],
         ]
         return layout
 
@@ -60,6 +66,9 @@ class MainWindow:
             self.window[f"resource_{resource}"].update(
                 f"{resource.capitalize()}: {int(amount)}"
             )
+        self.window["population"].update(f"Population: {int(self.game_state.resources['population'])}/{self.game_state.population_limit}")
+        if self.game_state.event_log:
+            self.remake_layout()
 
     def remake_layout(self):
         self.layout = self.create_layout()

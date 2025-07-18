@@ -19,6 +19,8 @@ class Building:
             for resource, amount in self.get_cost().items():
                 game_state.resources[resource] -= amount
             self.level += 1
+            if self.name == "House":
+                game_state.population_limit += 5
             return True
         return False
 
@@ -36,5 +38,10 @@ buildings = {
         name="Quarry",
         cost={"wood": 100, "stone": 50},
         production={"stone": 1},
+    ),
+    "house": Building(
+        name="House",
+        cost={"wood": 50},
+        production={},
     ),
 }
