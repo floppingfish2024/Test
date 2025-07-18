@@ -26,14 +26,46 @@ actions = {
         cost={},
         rewards={"wood": 1},
     ),
+    "unlock_stone_gathering": Action(
+        name="Unlock Stone Gathering",
+        cost={"wood": 10},
+        rewards={},
+    ),
     "gather_stone": Action(
         name="Gather Stone",
-        cost={"wood": 10},
+        cost={},
         rewards={"stone": 1},
+    ),
+    "unlock_iron_mining": Action(
+        name="Unlock Iron Mining",
+        cost={"stone": 25},
+        rewards={},
+    ),
+    "gather_iron": Action(
+        name="Gather Iron",
+        cost={},
+        rewards={"iron": 1},
+    ),
+    "unlock_gold_panning": Action(
+        name="Unlock Gold Panning",
+        cost={"iron": 50},
+        rewards={},
+    ),
+    "gather_gold": Action(
+        name="Gather Gold",
+        cost={},
+        rewards={"gold": 1},
     ),
 }
 
 
 def unlock_action(game_state, action_name):
-    if game_state.can_unlock(action_name):
-        game_state.unlocked_actions.add(action_name)
+    if action_name == "unlock_stone_gathering":
+        game_state.unlocked_actions.add("gather_stone")
+    elif action_name == "unlock_iron_mining":
+        game_state.unlocked_actions.add("gather_iron")
+    elif action_name == "unlock_gold_panning":
+        game_state.unlocked_actions.add("gather_gold")
+    else:
+        if game_state.can_unlock(action_name):
+            game_state.unlocked_actions.add(action_name)
